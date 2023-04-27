@@ -5,21 +5,27 @@ import (
 )
 
 type FeederConsumer struct {
-	WaitGroup        sync.WaitGroup
-	DataChannel      chan interface{}
-	NFeeders         int
-	FeederCallback   func() (interface{}, bool)
-	NConsumers       int
-	ConsumerCallback func(interface{})
+	WaitGroup   sync.WaitGroup
+	DataChannel chan interface{}
+
+	Feeders []struct {
+		Count    int
+		Callback func() (interface{}, bool)
+	}
+
+	Consumers struct {
+		Count    int
+		Callback func(interface{})
+	}
 }
 
 func (fc *FeederConsumer) Run() {
 	defer close(fc.DataChannel)
-	
-	for i := 0; i < fc.NConsumers; i++ {
+
+	for i := 0; i < fc.Consumers.Count; i++ {
 		go func() {
 			for newDataSet := range fc.DataChannel {
-				fc.ConsumerCallback(newDataSet)
+				fc.Consumers.Callback(newDataSet)
 
 				fc.WaitGroup.Done()
 			}
@@ -27,24 +33,27 @@ func (fc *FeederConsumer) Run() {
 	}
 
 	feederProcessWaitGroup := sync.WaitGroup{}
-	feederProcessWaitGroup.Add(fc.NFeeders)
 
-	for i := 0; i < fc.NFeeders; i++ {
-		go func() {
-			for {
-				newDataSet, isFeedingFinished := fc.FeederCallback()
+	for i := 0; i < len(fc.Feeders); i++ {
+		feederProcessWaitGroup.Add(fc.Feeders[i].Count)
 
-				fc.WaitGroup.Add(1)
+		for j := 0; j < fc.Feeders[i].Count; j++ {
+			go func() {
+				for {
+					newDataSet, isFeedingFinished := fc.Feeders[i].Callback()
 
-				fc.DataChannel <- newDataSet
+					fc.WaitGroup.Add(1)
 
-				if isFeedingFinished {
-					break
+					fc.DataChannel <- newDataSet
+
+					if isFeedingFinished {
+						break
+					}
 				}
-			}
 
-			feederProcessWaitGroup.Done()
-		}()
+				feederProcessWaitGroup.Done()
+			}()
+		}
 	}
 
 	feederProcessWaitGroup.Wait()
