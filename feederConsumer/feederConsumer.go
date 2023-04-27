@@ -4,19 +4,22 @@ import (
 	"sync"
 )
 
+type Feeders struct {
+	Count    int
+	Callback func() (interface{}, bool)
+}
+
+type Consumers struct {
+	Count    int
+	Callback func() (interface{}, bool)
+}
+
 type FeederConsumer struct {
 	WaitGroup   sync.WaitGroup
 	DataChannel chan interface{}
 
-	Feeders []struct {
-		Count    int
-		Callback func() (interface{}, bool)
-	}
-
-	Consumers struct {
-		Count    int
-		Callback func(interface{})
-	}
+	Feeders   []Feeders
+	Consumers Consumers
 }
 
 func (fc *FeederConsumer) Run() {
