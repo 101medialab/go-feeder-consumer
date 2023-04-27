@@ -11,7 +11,7 @@ type Feeders struct {
 
 type Consumers struct {
 	Count    int
-	Callback func() (interface{}, bool)
+	Callback func(interface{})
 }
 
 type FeederConsumer struct {
